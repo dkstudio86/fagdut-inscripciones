@@ -1,0 +1,131 @@
+services:
+
+  #Laravel Application
+  app:
+    build:
+      context: .
+      dockerfile: docker/dockerfiles/ssu.fpm.Dockerfile
+      target: dev
+      args:
+        UID: ${UID}
+        GID: ${GID}
+        INSTALAR_SOAP: ${INSTALAR_SOAP}
+        INSTALAR_GD: ${INSTALAR_GD}
+        INSTALAR_IMAGICK: ${INSTALAR_IMAGICK}
+        INSTALAR_BACKUP_TOOLS: ${INSTALAR_BACKUP_TOOLS}
+        INSTALAR_PDF_TOOLS: ${INSTALAR_PDF_TOOLS}
+    container_name: ${NAME}_app
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:1018:8080"
+      - "0.0.0.0:1019:8443"
+    volumes:
+      - ./code:/var/www/html
+      - ./nginx/certs:/etc/ssl/private
+      - ./tmp:/tmp
+    depends_on:
+      - redis
+    environment:
+      OPCACHE_ENABLE: ${OPCACHE_ENABLE}
+      SSL_MODE: "mixed"
+      SSL_CERTIFICATE_FILE: "/etc/ssl/private/localhost.crt"
+      SSL_PRIVATE_KEY_FILE: "/etc/ssl/private/localhost.key"
+    networks:
+      - default
+      - database_net_external
+
+  #  #Laravel Scheduler
+#  scheduler:
+#    build:
+#      context: .
+#      dockerfile: docker/dockerfiles/ssu.cli.Dockerfile
+#      target: scheduler
+#      args:
+#        UID: ${UID}
+#        GID: ${GID}
+#        INSTALAR_SOAP: ${INSTALAR_SOAP}
+#        INSTALAR_GD: ${INSTALAR_GD}
+#        INSTALAR_IMAGICK: ${INSTALAR_IMAGICK}
+#        INSTALAR_BACKUP_TOOLS: ${INSTALAR_BACKUP_TOOLS}
+#    container_name: ${NAME}_scheduler
+#    restart: unless-stopped
+#    volumes:
+#      - ./code:/var/www/html
+#    depends_on:
+#      - db
+#      - redis
+#    environment:
+#      OPCACHE_ENABLE: ${OPCACHE_ENABLE}
+#
+#  #Laravel Worker
+#  worker:
+#    build:
+#      context: .
+#      dockerfile: docker/dockerfiles/ssu.cli.Dockerfile
+#      target: worker
+#      args:
+#        UID: ${UID}
+#        GID: ${GID}
+#        INSTALAR_SOAP: ${INSTALAR_SOAP}
+#        INSTALAR_GD: ${INSTALAR_GD}
+#        INSTALAR_IMAGICK: ${INSTALAR_IMAGICK}
+#        INSTALAR_BACKUP_TOOLS: ${INSTALAR_BACKUP_TOOLS}
+#    container_name: ${NAME}_worker
+#    restart: unless-stopped
+#    volumes:
+#      - ./code:/var/www/html
+#    depends_on:
+#      - db
+#      - redis
+#    environment:
+#      OPCACHE_ENABLE: ${OPCACHE_ENABLE}
+#
+#  #MARIA DB
+#  db:
+#    container_name: ${NAME}_db
+#    image: mariadb:11.4
+#    volumes:
+#      - ./dbdata:/var/lib/mysql
+#    restart: unless-stopped
+#    user: ${UID}:${GID}
+#    ports:
+#      - "0.0.0.0:33061:3306"
+#    environment:
+#      MARIADB_ROOT_PASSWORD: root
+#      MARIADB_DATABASE: db
+#      MARIADB_PASSWORD: root
+
+  #Redis
+  redis:
+    image: redis:alpine
+    container_name: ${NAME}_redis
+    restart: unless-stopped
+
+#  #Adminer - Alternativa a PHPMyAdmin
+#  adminer:
+#    image: adminer
+#    container_name: ${NAME}_adminer
+#    hostname: redis
+#    links:
+#      - db
+#    depends_on:
+#      - db
+#    environment:
+#      ADMINER_DEFAULT_SERVER: ${NAME}_db
+#      ADMINER_PLUGINS: 'tinymce'
+#      ADMINER_DESIGN: 'dracula'
+#    restart: unless-stopped
+#    ports:
+#      - "0.0.0.0:81:8080"
+
+  gotenberg:
+    container_name: ${NAME}_gotenberg
+    image: gotenberg/gotenberg:8
+    ports:
+      - "3000:3000"
+
+networks:
+  default:
+    name: ${NAME}_default
+  database_net_external:
+    external: true
