@@ -22,8 +22,6 @@ services:
       - ./code:/var/www/html
       - ./.agents:/var/www/html/.agents
       - ./.ai:/var/www/html/.ai
-      - ./.github:/var/www/html/.github
-      - ./.vscode:/var/www/html/.vscode
       - ./AGENTS.md:/var/www/html/AGENTS.md
     depends_on:
       - db

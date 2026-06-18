@@ -21,8 +21,6 @@ services:
       - "0.0.0.0:1019:8443"
     volumes:
       - ./code:/var/www/html
-      - ./nginx/certs:/etc/ssl/private
-      - ./tmp:/tmp
     depends_on:
       - redis
     environment:
