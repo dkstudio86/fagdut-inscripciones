@@ -24,35 +24,53 @@ services:
       - ./.ai:/var/www/html/.ai
       - ./AGENTS.md:/var/www/html/AGENTS.md
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       PHP_OPCACHE_ENABLE: ${OPCACHE_ENABLE}
       SSL_MODE: "mixed"
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -x php-fpm > /dev/null && pgrep -x nginx > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  #Node — build de assets con Vite
+  node:
+    image: node:24-alpine
+    container_name: ${NAME}_node
+    working_dir: /var/www/html
+    volumes:
+      - ./code:/var/www/html
+    command: /bin/sh -c "npm install && npm run dev"
 
   #Laravel Scheduler
-  #  scheduler:
-  #    build:
-  #      context: .
-  #      dockerfile: docker/dockerfiles/ssu.cli.Dockerfile
-  #      target: scheduler
-  #      args:
-  #        UID: ${UID}
-  #        GID: ${GID}
-  #        INSTALAR_SOAP: ${INSTALAR_SOAP}
-  #        INSTALAR_GD: ${INSTALAR_GD}
-  #        INSTALAR_IMAGICK: ${INSTALAR_IMAGICK}
-  #        INSTALAR_BACKUP_TOOLS: ${INSTALAR_BACKUP_TOOLS}
-  #    container_name: ${NAME}_scheduler
-  #    restart: unless-stopped
-  #    volumes:
-  #      - ./code:/var/www/html
-  #    depends_on:
-  #      - worker
-  #      - db
-  #      - redis
-  #    environment:
-  #      PHP_OPCACHE_ENABLE: ${OPCACHE_ENABLE}
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/dockerfiles/ssu.cli.Dockerfile
+      target: scheduler
+      args:
+        UID: ${UID}
+        GID: ${GID}
+        INSTALAR_SOAP: ${INSTALAR_SOAP}
+        INSTALAR_GD: ${INSTALAR_GD}
+        INSTALAR_IMAGICK: ${INSTALAR_IMAGICK}
+        INSTALAR_BACKUP_TOOLS: ${INSTALAR_BACKUP_TOOLS}
+    container_name: ${NAME}_scheduler
+    restart: unless-stopped
+    volumes:
+      - ./code:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PHP_OPCACHE_ENABLE: ${OPCACHE_ENABLE}
 
   #Laravel Worker
   worker:
@@ -72,9 +90,12 @@ services:
     volumes:
       - ./code:/var/www/html
     depends_on:
-      - app
-      - db
-      - redis
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       PHP_OPCACHE_ENABLE: ${OPCACHE_ENABLE}
 
@@ -92,12 +113,23 @@ services:
       MARIADB_ROOT_PASSWORD: root
       MARIADB_DATABASE: db
       MARIADB_PASSWORD: root
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   #Redis
   redis:
     image: redis:alpine
     container_name: ${NAME}_redis
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   #Adminer - Alternativa a PHPMyAdmin
   adminer:
